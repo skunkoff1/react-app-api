@@ -50,7 +50,7 @@ const register = (req, res) => {
 
                 newUserRecord.save((err, result) => {
                     if(!err) {
-                        return res.status(201).send(result);
+                        return res.status(201).send({'message' : "enregistrement réussi"});
                     }
                     else {
                         return res.status(400).json({"error" : err});
