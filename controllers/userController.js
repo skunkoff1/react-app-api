@@ -1,5 +1,8 @@
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
+const bcrypt = require('bcrypt');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const login = (req, res) => {
 
@@ -8,20 +11,25 @@ const login = (req, res) => {
 
     User.findOne({ username : username})
         .then((user) => {
-            if(pwd != user.password) {
-                return res.status(401).json({'message' : "utilisateur et/ou mot de passe incorrect"});
-            }
-            else if(pwd == user.password) {
-                const token = jwt.sign({ login: username}, process.env.SECRET);
-                return res.status(200).json({'message' : "connection réussie", 'token' : token});
+            if(!user) {
+                return res.status(404).json({ 'message': 'utilisateur inconnu' });
             }
             else {
-                return res.status(400).json({'message' : "mauvaise requete"});
+                bcrypt.compare(req.body.pwd, user.password, function(err, boolCrypt) {
+                    if (boolCrypt) {
+                        let token = jwt.sign({ "sub": username }, process.env.SECRET, { expiresIn: '120m' });
+                        res.status(200).send({ "user": user, "token": token, "message" : "connection réussie" });
+                    } else if (!boolCrypt) {
+                        return res.status(400).json({ 'message': 'Mot de passe incorrect' });
+                    } else {
+                        return res.status(500).json({ 'error': 'Une erreur est survenue' + err });
+                    }
+                })
             }
             
         })
         .catch((err) => {
-            return res.status(401).json({'message' : "utilisateur et/ou mot de passe incorrect"});
+            return res.status(400).json({'message' : "utilisateur et/ou mot de passe incorrect"});
         })
 }
 
@@ -43,18 +51,22 @@ const register = (req, res) => {
                 return res.status(401).json({'message' : "nom d'utilisateur déjà utilisé"});
            }
            else {
-                const newUserRecord = new User({
-                    username: req.body.username,
-                    password: req.body.pwd,
-                });
+                bcrypt.genSalt(10, function(err, salt) {
+                    bcrypt.hash(req.body.pwd, salt, function(err, hashedPass) {
+                        const newUserRecord = new User({
+                            username: req.body.username,
+                            password: hashedPass,
+                        });
 
-                newUserRecord.save((err, result) => {
-                    if(!err) {
-                        return res.status(201).send({'message' : "enregistrement réussi"});
-                    }
-                    else {
-                        return res.status(400).json({"message" : err});
-                    }
+                        newUserRecord.save((err, result) => {
+                            if(!err) {
+                                return res.status(201).send({'message' : "enregistrement réussi"});
+                            }
+                            else {
+                                return res.status(400).json({"message" : err});
+                            }
+                        })
+                    })
                 })
            }
         })
