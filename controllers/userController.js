@@ -53,7 +53,7 @@ const register = (req, res) => {
                         return res.status(201).send({'message' : "enregistrement réussi"});
                     }
                     else {
-                        return res.status(400).json({"error" : err});
+                        return res.status(400).json({"message" : err});
                     }
                 })
            }
